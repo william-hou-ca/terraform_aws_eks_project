@@ -3,6 +3,11 @@ variable "my_ip" {
   description = "Define your work public ip range autorized to access aws service"
 }
 
+variable "ec2_key_name" {
+  type = string
+  default = "key-hr123000"
+}
+
 variable "db_username" {
   type = string
 }

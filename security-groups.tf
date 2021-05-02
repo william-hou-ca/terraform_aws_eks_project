@@ -1,5 +1,5 @@
 resource "aws_security_group" "sg_private" {
-  name_prefix = "tf-sg-db-"
+  name_prefix = "tf-sg-private-"
   vpc_id      = module.vpc.vpc_id
 
   ingress {
@@ -11,8 +11,8 @@ resource "aws_security_group" "sg_private" {
   }
 
   ingress {
-    from_port = 80
-    to_port   = 80
+    from_port = 22
+    to_port   = 22
     protocol  = "tcp"
 
     security_groups = [aws_security_group.sg_public.id]

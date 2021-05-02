@@ -16,7 +16,7 @@ resource "aws_instance" "bastion" {
 
   #optional parametres
   associate_public_ip_address = true
-  key_name = "key-hr123000" #key paire name exists in aws.
+  key_name = var.ec2_key_name #key paire name exists in aws.
 
   vpc_security_group_ids = [aws_security_group.sg_public.id]
 
@@ -36,9 +36,10 @@ resource "aws_instance" "bastion" {
           gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
           EOR
           sudo yum install kubectl-0:1.18.17-0.x86_64 -y
+          sudo yum install git -y
           cd /home/ec2-user
           echo "alias k=kubectl" | sudo tee -a /home/ec2-user/.bashrc
-          echo 'aws eks update-kubeconfig --region ca-central-1 --name ${local.cluster_name}' | sudo tee /home.ec2-user/k8s.sh
+          echo 'aws eks update-kubeconfig --region ca-central-1 --name ${local.cluster_name}' | sudo tee /home/ec2-user/k8s.sh
 EOF
 
   tags = {
