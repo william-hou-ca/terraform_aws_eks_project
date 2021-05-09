@@ -1,0 +1,29 @@
+#Firstly, you should finish the job in the web page: https://v1-18.docs.kubernetes.io/docs/tasks/administer-cluster/extended-resource-node/
+apiVersion: v1
+kind: Pod
+metadata:
+  name: extended-resource-demo
+spec:
+  containers:
+  - name: extended-resource-demo-ctr
+    image: nginx
+    resources:
+      requests:
+        example.com/dongle: 3
+      limits:
+        example.com/dongle: 3
+---
+#Attempt to create a second Pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: extended-resource-demo-2
+spec:
+  containers:
+  - name: extended-resource-demo-2-ctr
+    image: nginx
+    resources:
+      requests:
+        example.com/dongle: 2
+      limits:
+        example.com/dongle: 2

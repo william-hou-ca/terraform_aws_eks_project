@@ -40,6 +40,28 @@ resource "aws_instance" "bastion" {
           cd /home/ec2-user
           echo "alias k=kubectl" | sudo tee -a /home/ec2-user/.bashrc
           echo 'aws eks update-kubeconfig --region ca-central-1 --name ${local.cluster_name}' | sudo tee /home/ec2-user/k8s.sh
+          echo '#######################install metric service##########################'
+          #echo 'kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml' | sudo tee -a k8s.sh
+          sleep 2
+          echo '#######################installer ebs csi###############################'
+          curl -o example-iam-policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-ebs-csi-driver/v1.0.0/docs/example-iam-policy.json
+          aws iam create-policy --policy-name AmazonEKS_EBS_CSI_Driver_Policy --policy-document file://example-iam-policy.json
+          #aws eks describe-cluster --name ${module.eks.cluster_id} --query "cluster.identity.oidc.issuer" --output text
+          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+          sudo mv /tmp/eksctl /usr/local/bin
+          eksctl version
+          #eksctl create iamserviceaccount --name ebs-csi-controller-sa --namespace kube-system --cluster ${local.cluster_name} --attach-policy-arn arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/AmazonEKS_EBS_CSI_Driver_Policy --approve --override-existing-serviceaccounts
+          sleep 2
+          echo '#######################installer helm###############################'
+          curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 > get_helm.sh
+          chmod 700 get_helm.sh
+          ./get_helm.sh
+          sleep 2
+          echo '#######################deploy ebs csi driver to k8s###############################'
+          helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+          helm repo update
+          #helm upgrade -install aws-ebs-csi-driver aws-ebs-csi-driver/aws-ebs-csi-driver --namespace kube-system --set enableVolumeResizing=true --set enableVolumeSnapshot=true --set serviceAccount.controller.create=false --set serviceAccount.controller.name=ebs-csi-controller-sa
+
 EOF
 
   tags = {
