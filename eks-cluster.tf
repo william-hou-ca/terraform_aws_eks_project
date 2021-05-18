@@ -12,7 +12,7 @@ module "eks" {
     root_volume_type = "gp2"
     root_volume_size = 8
     enable_monitoring = false
-    instance_type     = "t2.micro"
+    instance_type     = "t2.small"
     key_name = var.ec2_key_name
   }
 
@@ -25,7 +25,7 @@ module "eks" {
     },
     {
       name                          = "worker-group-db"
-      asg_desired_capacity          = 2
+      asg_desired_capacity          = 1
       additional_security_group_ids = [aws_security_group.sg_private.id]
       subnets = module.vpc.private_subnets
     }

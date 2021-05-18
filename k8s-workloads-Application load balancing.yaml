@@ -1,0 +1,12 @@
+#web page: https://docs.aws.amazon.com/eks/latest/userguide/alb-ingress.html
+#Prerequisites:
+# The AWS Load Balancer Controller provisioned on your cluster.
+# At least two subnets in different Availability Zones. 
+# If you're using the AWS Load Balancer controller version v2.1.1 or earlier, subnets must be tagged as follows. If using version 2.1.2 or later, this tag is optional. 
+# Subnet tagging
+
+# To deploy a sample application
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.1.3/docs/examples/2048/2048_full.yaml
+
+# Another sample of echoserver in the following web page
+https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.2/examples/echo_server/

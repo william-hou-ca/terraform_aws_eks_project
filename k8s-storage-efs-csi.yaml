@@ -1,0 +1,101 @@
+# 1. Create an IAM policy that allows the CSI driver's service account to make calls to AWS APIs on your behalf.
+curl -o iam-policy-example.json https://raw.githubusercontent.com/kubernetes-sigs/aws-efs-csi-driver/v1.2.0/docs/iam-policy-example.json
+aws iam create-policy \
+    --policy-name AmazonEKS_EFS_CSI_Driver_Policy \
+    --policy-document file://iam-policy-example.json
+# 2. Create an IAM role and attach the IAM policy to it. 
+eksctl create iamserviceaccount \
+    --name efs-csi-controller-sa \
+    --namespace kube-system \
+    --cluster <cluster-name> \
+    --attach-policy-arn arn:aws:iam::<AWS account ID>:policy/AmazonEKS_EFS_CSI_Driver_Policy \
+    --approve \
+    --override-existing-serviceaccounts \
+    --region ca-central-1 
+# 3. Install the Amazon EFS driver
+helm repo add aws-efs-csi-driver https://kubernetes-sigs.github.io/aws-efs-csi-driver/
+helm repo update
+helm upgrade -i aws-efs-csi-driver aws-efs-csi-driver/aws-efs-csi-driver \
+    --namespace kube-system \
+    --set image.repository=602401143452.dkr.ecr.ca-central-1.amazonaws.com/eks/aws-efs-csi-driver \
+    --set serviceAccount.controller.create=false \
+    --set serviceAccount.controller.name=efs-csi-controller-sa
+# 4. Create an Amazon EFS file system
+vpc_id=$(aws eks describe-cluster \
+    --name <cluster-name> \
+    --query "cluster.resourcesVpcConfig.vpcId" \
+    --output text)
+cidr_range=$(aws ec2 describe-vpcs \
+    --vpc-ids $vpc_id \
+    --query "Vpcs[].CidrBlock" \
+    --output text)
+security_group_id=$(aws ec2 create-security-group \
+    --group-name MyEfsSecurityGroup \
+    --description "My EFS security group" \
+    --vpc-id $vpc_id \
+    --output text)
+aws ec2 authorize-security-group-ingress \
+    --group-id $security_group_id \
+    --protocol tcp \
+    --port 2049 \
+    --cidr $cidr_range
+# Create a file system
+file_system_id=$(aws efs create-file-system \
+    --region ca-central-1 \
+    --performance-mode generalPurpose \
+    --query 'FileSystemId' \
+    --output text)
+# Create mount targets.
+aws ec2 describe-subnets \
+    --filters "Name=vpc-id,Values=$vpc_id" \
+    --query 'Subnets[*].{SubnetId: SubnetId,AvailabilityZone: AvailabilityZone,CidrBlock: CidrBlock}' \
+    --output table
+# Add mount targets for the subnets that your nodes are in.
+aws efs create-mount-target \
+    --file-system-id $file_system_id \
+    --subnet-id <subnet-EXAMPLEe2ba886490> \
+    --security-groups $security_group_id
+
+# 5. Deploy a sample application
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: efs-sc
+provisioner: efs.csi.aws.com
+parameters:
+  provisioningMode: efs-ap
+  fileSystemId: <fs-92107410>
+  directoryPerms: "700"
+  gidRangeStart: "1000" # optional
+  gidRangeEnd: "2000" # optional
+  basePath: "/dynamic_provisioning" # optional
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: efs-claim
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: efs-app
+spec:
+  containers:
+    - name: app
+      image: centos
+      command: ["/bin/sh"]
+      args: ["-c", "while true; do echo $(date -u) >> /data/out; sleep 5; done"]
+      volumeMounts:
+        - name: persistent-storage
+          mountPath: /data
+  volumes:
+    - name: persistent-storage
+      persistentVolumeClaim:
+        claimName: efs-claim

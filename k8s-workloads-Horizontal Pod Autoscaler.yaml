@@ -1,0 +1,23 @@
+# web page: 
+# Prerequisites:
+# You have an existing Amazon EKS cluster. If you don't, see Getting started with Amazon EKS.
+# You have the Kubernetes Metrics Server installed. For more information, see Installing the Kubernetes Metrics Server.
+# You are using a kubectl client that is configured to communicate with your Amazon EKS cluster.
+
+# 1. install metric server
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+# 2. Run a Horizontal Pod Autoscaler test application
+#Deploy a simple Apache web server application with the following command
+kubectl apply -f https://k8s.io/examples/application/php-apache.yaml
+#Create a Horizontal Pod Autoscaler resource for the php-apache deployment
+kubectl autoscale deployment php-apache --cpu-percent=50 --min=1 --max=3
+#Describe the autoscaler with the following command to view its details.
+kubectl describe hpa
+#Create a load for the web server by running a container.
+kubectl run -it --rm load-generator --image=busybox /bin/sh --generator=run-pod/v1
+while true; do wget -q -O- http://php-apache; done
+#To watch the deployment scale out, 
+kubectl get hpa
+#clean pods
+kubectl delete deployment.apps/php-apache service/php-apache horizontalpodautoscaler.autoscaling/php-apache

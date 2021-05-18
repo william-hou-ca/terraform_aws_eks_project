@@ -1,0 +1,79 @@
+#defin configmap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: special-config
+data:
+  # property-like keys; each key maps to a simple value
+  special.how: "very"
+  ui_properties_file_name: "user-interface.properties"
+  #
+  # file-like keys
+  game.properties: |
+    enemy.types=aliens,monsters
+    player.maximum-lives=5
+  user-interface.properties: |
+    color.good=purple
+    color.bad=yellow
+    allow.textmode=true
+---
+#Define container environment variables using ConfigMap data
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dapi-test-pod
+spec:
+  containers:
+    - name: test-container
+      image: k8s.gcr.io/busybox
+      command: [ "/bin/sh", "-c"]
+      args: ["env; sleep 3600"]
+      env:
+        # Define the environment variable
+        - name: SPECIAL_LEVEL_KEY
+          valueFrom:
+            configMapKeyRef:
+              # The ConfigMap containing the value you want to assign to SPECIAL_LEVEL_KEY
+              name: special-config
+              # Specify the key associated with the value
+              key: special.how
+  restartPolicy: Never
+---
+#Define container environment variables with data from multiple ConfigMaps
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: special-config
+  namespace: default
+data:
+  special.how: very
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: env-config
+  namespace: default
+data:
+  log_level: INFO
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: dapi-test-pod
+spec:
+  containers:
+    - name: test-container
+      image: k8s.gcr.io/busybox
+      command: [ "/bin/sh", "-c", "env" ]
+      env:
+        - name: SPECIAL_LEVEL_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: special-config
+              key: special.how
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: env-config
+              key: log_level
+  restartPolicy: Never
